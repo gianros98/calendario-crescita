@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import logoFiver from "./assets/logo-fiver-white.png";
 
 /* ---------------------------------------------------------
    CALENDARIO CRESCITA 2026
@@ -728,7 +729,7 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `calendario-crescita-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `fiver-plan-backup-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -894,8 +895,9 @@ export default function App() {
 
   if (loading || !events || !settings) {
     return (
-      <div style={{ minHeight: "100vh", background: "#1C1428", display: "flex", alignItems: "center", justifyContent: "center", color: "#F5EFE6", fontFamily: "sans-serif" }}>
-        Carico il calendario…
+      <div style={{ minHeight: "100vh", background: "#1C1428", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "14px", color: "#F5EFE6", fontFamily: "sans-serif" }}>
+        <img src={logoFiver} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
+        Carico Fiver Plan…
       </div>
     );
   }
@@ -915,6 +917,8 @@ export default function App() {
         * { box-sizing: border-box; }
         .app { min-height:100vh; background: var(--bg); background-image: radial-gradient(circle at 15% 0%, rgba(232,184,75,0.06), transparent 40%), radial-gradient(circle at 85% 20%, rgba(255,111,89,0.05), transparent 45%); padding: 28px 16px 60px; }
         .header { max-width: 880px; margin: 0 auto 24px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+        .h-brand { display:flex; align-items:center; gap:14px; }
+        .h-logo { width:44px; height:44px; object-fit:contain; flex-shrink:0; }
         .h-title { font-family:'Fraunces',serif; font-size: clamp(1.6rem, 5vw, 2.3rem); font-weight:700; color: var(--text); letter-spacing:-0.01em; }
         .h-sub { font-family:'Space Grotesk',sans-serif; font-size:0.85rem; color: var(--text-muted); margin-top:4px; }
         .gear-btn { background: var(--surface); border:1px solid rgba(245,239,230,0.1); color: var(--text-muted); width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:1.1rem; flex-shrink:0; }
@@ -961,9 +965,12 @@ export default function App() {
       ) : (
         <>
           <div className="header">
-            <div>
-              <div className="h-title">Calendario Crescita</div>
-              <div className="h-sub">Settembre – Dicembre 2026 · previsto vs effettivo</div>
+            <div className="h-brand">
+              <img src={logoFiver} className="h-logo" alt="" />
+              <div>
+                <div className="h-title">Fiver Plan</div>
+                <div className="h-sub">Settembre – Dicembre 2026 · previsto vs effettivo</div>
+              </div>
             </div>
             <button className="gear-btn" onClick={() => setShowSettings(true)} aria-label="Modifica target">⚙</button>
           </div>
