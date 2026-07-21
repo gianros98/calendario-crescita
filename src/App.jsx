@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import logoFiver from "./assets/logo-fiver-white.png";
+import { supabase, STATE_TABLE, STATE_ROW_ID } from "./supabaseClient";
 
 /* ---------------------------------------------------------
    CALENDARIO CRESCITA 2026
@@ -23,8 +24,10 @@ import logoFiver from "./assets/logo-fiver-white.png";
    - Alcuni eventi (es. casting) hanno una provvigione fissa diretta,
      scollegata da ricavi/costi.
 
-   Persistenza: localStorage (browser), sotto le chiavi
-   "events-2026" e "settings-2026".
+   Persistenza: Supabase (Postgres cloud condiviso), tabella
+   "fiver_plan_state", riga singola (id=1) con colonne jsonb
+   "events"/"settings". Sincronizzazione in tempo reale via
+   Realtime: ogni client aggiornato vede le modifiche altrui.
    --------------------------------------------------------- */
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');`;
@@ -183,28 +186,38 @@ function migrateEvent(ev) {
   };
 }
 
-/* ---------- storage (localStorage) ---------- */
+/* ---------- storage (Supabase — dati condivisi tra tutti i dispositivi) ---------- */
 
-const STORAGE_KEYS = { events: "events-2026", settings: "settings-2026" };
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
 
 async function loadState() {
-  try {
-    const evRaw = window.localStorage.getItem(STORAGE_KEYS.events);
-    const stRaw = window.localStorage.getItem(STORAGE_KEYS.settings);
-    return {
-      events: evRaw ? JSON.parse(evRaw).map(migrateEvent) : defaultEvents(),
-      settings: stRaw ? JSON.parse(stRaw) : defaultSettings(),
-    };
-  } catch (e) {
-    return { events: defaultEvents(), settings: defaultSettings() };
-  }
+  const { data, error } = await supabase
+    .from(STATE_TABLE)
+    .select("events, settings")
+    .eq("id", STATE_ROW_ID)
+    .single();
+  if (error) throw error;
+  return {
+    events: Array.isArray(data.events) ? data.events.map(migrateEvent) : defaultEvents(),
+    settings: data.settings && Object.keys(data.settings).length ? data.settings : defaultSettings(),
+  };
 }
-async function saveEvents(events) {
-  try { window.localStorage.setItem(STORAGE_KEYS.events, JSON.stringify(events)); } catch (e) {}
+
+async function persistEvents(events) {
+  await supabase.from(STATE_TABLE).update({ events, updated_at: new Date().toISOString() }).eq("id", STATE_ROW_ID);
 }
-async function saveSettings(settings) {
-  try { window.localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings)); } catch (e) {}
+async function persistSettings(settings) {
+  await supabase.from(STATE_TABLE).update({ settings, updated_at: new Date().toISOString() }).eq("id", STATE_ROW_ID);
 }
+
+const saveEvents = debounce(persistEvents, 500);
+const saveSettings = debounce(persistSettings, 500);
 
 /* ---------- atomi UI ---------- */
 
@@ -816,11 +829,29 @@ export default function App() {
   const [activeEventId, setActiveEventId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    loadState().then(({ events, settings }) => {
-      setEvents(events); setSettings(settings); setLoading(false);
-    });
+    loadState()
+      .then(({ events, settings }) => {
+        setEvents(events); setSettings(settings); setLoading(false);
+      })
+      .catch(() => setLoadError(true));
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("fiver_plan_state_changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: STATE_TABLE, filter: `id=eq.${STATE_ROW_ID}` },
+        ({ new: row }) => {
+          if (Array.isArray(row.events)) setEvents(row.events.map(migrateEvent));
+          if (row.settings) setSettings(row.settings);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -892,6 +923,15 @@ export default function App() {
       return { ...rl, value, pct: Math.round((value / total) * 100) };
     });
   }, [events]);
+
+  if (loadError) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#1C1428", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "14px", color: "#F5EFE6", fontFamily: "sans-serif", padding: "20px", textAlign: "center" }}>
+        <img src={logoFiver} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
+        <div>Impossibile caricare i dati condivisi.<br />Controlla la connessione e ricarica la pagina.</div>
+      </div>
+    );
+  }
 
   if (loading || !events || !settings) {
     return (
