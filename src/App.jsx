@@ -58,11 +58,11 @@ const OLD_COST_LABELS = {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-function newEvent(month) {
+function newEvent(month, costLabels) {
   return {
     id: uid(), month, name: "Nuovo evento", type: "altro",
     revenues: { ticket: { budget: 0, actual: null }, bar: { budget: 0, actual: null } },
-    costs: DEFAULT_COST_LABELS.map((label) => ({ id: uid(), label, budget: 0, actual: null })),
+    costs: (Array.isArray(costLabels) ? costLabels : DEFAULT_COST_LABELS).map((label) => ({ id: uid(), label, budget: 0, actual: null })),
     marginMode: "percent", // "percent" | "fixedLocale" | "flatFee"
     percLocalePct: 20,
     localeFixed: { budget: null, actual: null },
@@ -77,6 +77,7 @@ const defaultEvents = () => [];
 const defaultSettings = () => ({
   targetMovimentato: { min: 50000, obiettivo: 80000, stretch: 100000 },
   targetMargine: { min: 12000, obiettivo: 18000, stretch: 22000 },
+  defaultCostLabels: [...DEFAULT_COST_LABELS],
 });
 
 function formatEuro(n) {
@@ -203,9 +204,15 @@ async function loadState() {
     .eq("id", STATE_ROW_ID)
     .single();
   if (error) throw error;
+  const settings = data.settings && Object.keys(data.settings).length ? data.settings : defaultSettings();
   return {
     events: Array.isArray(data.events) ? data.events.map(migrateEvent) : defaultEvents(),
-    settings: data.settings && Object.keys(data.settings).length ? data.settings : defaultSettings(),
+    settings: {
+      ...settings,
+      defaultCostLabels: Array.isArray(settings.defaultCostLabels) && settings.defaultCostLabels.length
+        ? settings.defaultCostLabels
+        : [...DEFAULT_COST_LABELS],
+    },
   };
 }
 
@@ -736,6 +743,11 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
   const fileInputRef = useRef(null);
   const [importMsg, setImportMsg] = useState(null);
 
+  const costLabels = settings.defaultCostLabels || [];
+  const patchCostLabel = (idx, label) => onChange({ ...settings, defaultCostLabels: costLabels.map((l, i) => (i === idx ? label : l)) });
+  const addCostLabel = () => onChange({ ...settings, defaultCostLabels: [...costLabels, "Nuova categoria"] });
+  const removeCostLabel = (idx) => onChange({ ...settings, defaultCostLabels: costLabels.filter((_, i) => i !== idx) });
+
   const handleExport = () => {
     const payload = { exportedAt: new Date().toISOString(), events, settings };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -788,6 +800,19 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
         ))}
 
         <div className="settings-group">
+          <div className="settings-group-title">Categorie di costo predefinite<span className="cat-sub">applicate ai nuovi eventi — modificabili poi per singolo evento</span></div>
+          <div className="cat-list">
+            {costLabels.map((label, idx) => (
+              <div className="cat-row" key={idx}>
+                <input className="cat-input" value={label} onChange={(e) => patchCostLabel(idx, e.target.value)} />
+                <button className="cat-remove" onClick={() => removeCostLabel(idx)} aria-label="Rimuovi categoria">×</button>
+              </div>
+            ))}
+          </div>
+          <button className="cat-add" onClick={addCostLabel}>+ Aggiungi categoria</button>
+        </div>
+
+        <div className="settings-group">
           <div className="settings-group-title">Backup dati</div>
           <div className="backup-row">
             <button className="backup-btn" onClick={handleExport}>⬇ Scarica backup</button>
@@ -808,6 +833,18 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
         .settings-group-title { font-family:'Space Grotesk',sans-serif; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em; color: var(--gold); margin-bottom:8px; }
         .settings-fields { display:flex; gap:16px; flex-wrap:wrap; }
         .settings-fields label { display:block; font-family:'Space Grotesk',sans-serif; font-size:0.68rem; color: var(--text-muted); margin-bottom:3px; }
+        .cat-sub { display:block; font-family:'Space Grotesk',sans-serif; font-size:0.68rem; font-weight:400; color: var(--text-muted); font-style:italic; margin-top:2px; text-transform:none; letter-spacing:normal; }
+        .cat-list { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+        .cat-row { display:flex; align-items:center; gap:8px; }
+        .cat-input {
+          flex:1; min-width:0; background: rgba(245,239,230,0.05); border: 1px solid rgba(245,239,230,0.12); border-radius:8px;
+          color: var(--text); font-family:'Space Grotesk',sans-serif; font-size:16px; padding:8px 10px; outline:none;
+        }
+        .cat-input:focus { border-color: var(--coral); }
+        .cat-remove { background:transparent; border:none; color: var(--text-muted); font-size:1.2rem; cursor:pointer; line-height:1; padding:4px 6px; flex-shrink:0; }
+        .cat-remove:hover { color: #F0899D; }
+        .cat-add { background:transparent; border: 1px dashed rgba(245,239,230,0.25); color: var(--text-muted); font-family:'Space Grotesk',sans-serif; font-size:0.78rem; padding:9px; border-radius:8px; width:100%; cursor:pointer; }
+        .cat-add:hover { border-color: var(--coral); color: var(--coral); }
         .settings-close { width:100%; margin-top:10px; background: var(--coral); border:none; color: #1C1428; font-family:'Space Grotesk',sans-serif; font-weight:600; padding:12px; border-radius:10px; cursor:pointer; }
         .backup-row { display:flex; gap:8px; flex-wrap:wrap; }
         .backup-btn { flex:1; min-width:150px; background: rgba(245,239,230,0.05); border:1px solid rgba(245,239,230,0.14); color: var(--text); font-family:'Space Grotesk',sans-serif; font-size:0.82rem; padding:11px 10px; border-radius:9px; cursor:pointer; }
@@ -876,14 +913,14 @@ export default function App() {
   }, []);
 
   const addEvent = useCallback((m) => {
-    const ne = newEvent(m);
+    const ne = newEvent(m, settings?.defaultCostLabels);
     setEvents((prev) => {
       const next = [...prev, ne];
       saveEvents(next);
       return next;
     });
     setActiveEventId(ne.id);
-  }, []);
+  }, [settings]);
 
   const updateSettings = useCallback((s) => { setSettings(s); saveSettings(s); }, []);
 
