@@ -56,6 +56,66 @@ const OLD_COST_LABELS = {
   pubblicita: "Pubblicità", materiale: "Materiale e attrezzature", noleggio: "Noleggio attrezzature", altro: "Altro",
 };
 
+/* ---------- il piano (percorso strategico Fiver) ---------- */
+
+const PLAN_SECTIONS = [
+  {
+    title: "Chi è Fiver oggi",
+    points: [
+      { icon: "◈", title: "Cosa fa", text: "Feste a tema (Halloween, Capodanno, Carnevale), aperitivi ricorrenti in locali e piscine, tornei sportivi — per privati e aperti al pubblico." },
+      { icon: "⚽", title: "Il torneo diventato un punto fermo", text: "La Fiver Cup di calcio è l'evento sportivo di riferimento, con l'idea di ampliarsi anche a pallavolo e padel." },
+      { icon: "◎", title: "Come lavora oggi", text: "Sulla carta è un servizio di consulenza, ma nella pratica le feste sono organizzate direttamente da Fiver." },
+      { icon: "?", title: "Il marchio oggi", text: "Riconosciuto e riconoscibile nella zona, ma non ancora registrato — e la parte fiscale non è ancora allineata a quello che fa davvero." },
+    ],
+  },
+  {
+    title: "Dove vuole arrivare Fiver",
+    points: [
+      { icon: "✷", title: "Un'azienda vera, non un servizio", text: "Commercia i propri servizi: organizzazione eventi, ingressi, beverage, merchandising, consulenza per chi vuole sfruttare il marchio." },
+      { icon: "€", title: "Incassa e paga, non prende quello che avanza", text: "Fa il prezzo, paga fornitori e dipendenti, incassa dai clienti — non aspetta più quello che resta a fine serata." },
+      { icon: "!", title: "Si assume il rischio", text: "Costi fissi, permessi, responsabilità: Fiver diventa chi rischia in prima persona, non chi sta a guardare." },
+      { icon: "✓", title: "In regola, a tutti gli effetti", text: "Una vera azienda che organizza eventi — e lo fa nel modo giusto, stipendiando i soci come chiunque altro ci lavori." },
+    ],
+  },
+  {
+    title: "Cosa serve a Lorenzo e Gabriele per arrivarci",
+    points: [
+      { icon: "◈", title: "Avere un piano", text: "Una direzione scritta, con tappe e obiettivi chiari — non solo l'intenzione di arrivarci." },
+      { icon: "✷", title: "Costruire procedure aziendali", text: "Il patrimonio dell'azienda: know-how tecnico e conoscenze che oggi vivono solo nella testa di due persone." },
+      { icon: "€", title: "Avere strumenti di monitoraggio", text: "Economici e non: per sapere sempre, numeri alla mano, se la strada presa è quella giusta." },
+    ],
+  },
+  {
+    title: "Cosa succede se non si studia un piano",
+    variant: "warn",
+    points: [
+      { icon: "!", title: "Si passa di moda", text: "Il pubblico cambia gusti più in fretta di quanto un'idea vincente riesca a reggere da sola." },
+      { icon: "!", title: "Manca la capacità di reinventarsi", text: "Senza una struttura, ogni cambiamento richiesto dal mercato diventa un salto nel buio, non una scelta preparata." },
+      { icon: "!", title: "Investimenti sbagliati, o nessun investimento", text: "Senza numeri e un piano, non si sa mai davvero dove conviene mettere energie e soldi." },
+      { icon: "!", title: "Restano due persone brave a fare feste", text: "Non un'azienda. La differenza si vede quando l'entusiasmo iniziale finisce." },
+    ],
+  },
+  {
+    title: "Il primo strumento: chiudere bene il 2026",
+    variant: "highlight",
+    points: [
+      { icon: "€", title: "Un budget su quanto ci si aspetta di guadagnare", text: "Sia il movimentato che passa dai locali dove organizzate, sia quello che resta davvero a voi — fino a dicembre." },
+      { icon: "=", title: "Un riscontro reale, evento dopo evento", text: "Per sapere come sta andando con i dati alla mano, non a sensazione." },
+      { icon: "✓", title: "La base per il 2027", text: "Gli stessi numeri diventano le fondamenta su cui costruire le previsioni dell'anno prossimo." },
+    ],
+    cta: true,
+  },
+  {
+    title: "Se il 2026 conferma l'obiettivo",
+    points: [
+      { icon: "✷", title: "Un obiettivo ambizioso e realistico", text: "Se lo si raggiunge, vuol dire che il modello regge davvero — non è stato un caso." },
+      { icon: "◈", title: "Un piano 2027 su 12 mesi", text: "Costruito sui dati veri raccolti nel 2026, non su stime o sensazioni." },
+      { icon: "✓", title: "Da qui si diventa un'azienda", text: "Permessi, società, uno stipendio vero, le regole in ordine — comportarsi da azienda, non più da due persone che organizzano feste." },
+    ],
+    closing: "Con un piano nasce un'azienda.",
+  },
+];
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 function newEvent(month, costLabels) {
@@ -857,11 +917,80 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
   );
 }
 
+/* ---------- vista "Il Piano" (percorso strategico) ---------- */
+
+function PlanView({ onGoToBudget }) {
+  return (
+    <div className="plan-view">
+      <div className="plan-hero">
+        <div className="plan-hero-kicker">FIVER</div>
+        <div className="plan-hero-title">Il piano di crescita di Fiver</div>
+      </div>
+
+      {PLAN_SECTIONS.map((section, si) => (
+        <div className={"plan-section" + (section.variant ? " plan-section-" + section.variant : "")} key={si}>
+          <div className="plan-section-title">{section.title}</div>
+          <div className="plan-points">
+            {section.points.map((p, pi) => (
+              <div className="plan-point" key={pi}>
+                <span className="plan-point-icon">{p.icon}</span>
+                <div>
+                  <div className="plan-point-title">{p.title}</div>
+                  <div className="plan-point-text">{p.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {section.cta && (
+            <button className="plan-cta" onClick={onGoToBudget}>Vai al Budget →</button>
+          )}
+          {section.closing && <div className="plan-closing">{section.closing}</div>}
+        </div>
+      ))}
+
+      <style>{`
+        .plan-view { max-width:880px; margin:0 auto; padding-bottom:20px; }
+        .plan-hero { text-align:center; padding: 20px 0 36px; }
+        .plan-hero-kicker { font-family:'Space Grotesk',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.25em; color: var(--gold); margin-bottom:10px; }
+        .plan-hero-title { font-family:'Fraunces',serif; font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight:700; color: var(--text); letter-spacing:-0.01em; line-height:1.15; }
+
+        .plan-section { background: var(--surface); border-radius:16px; padding:20px; margin-bottom:16px; }
+        .plan-section-title { font-family:'Fraunces',serif; font-size:1.15rem; font-weight:600; color: var(--text); margin-bottom:16px; }
+        .plan-section-warn { background: rgba(225,99,122,0.08); }
+        .plan-section-warn .plan-section-title { color: #F0899D; }
+        .plan-section-highlight { background: linear-gradient(135deg, rgba(232,184,75,0.14), rgba(255,111,89,0.1)); border: 1px solid rgba(232,184,75,0.25); }
+
+        .plan-points { display:grid; grid-template-columns: 1fr; gap:16px; }
+        @media (min-width: 640px) {
+          .plan-points { grid-template-columns: 1fr 1fr; }
+        }
+        .plan-point { display:flex; gap:12px; align-items:flex-start; }
+        .plan-point-icon { font-size:1.3rem; color: var(--gold); flex-shrink:0; line-height:1.3; width:1.4em; text-align:center; }
+        .plan-section-warn .plan-point-icon { color: #F0899D; }
+        .plan-point-title { font-family:'Space Grotesk',sans-serif; font-size:0.9rem; font-weight:700; color: var(--text); margin-bottom:4px; }
+        .plan-point-text { font-family:'Space Grotesk',sans-serif; font-size:0.85rem; color: var(--text-muted); line-height:1.5; }
+
+        .plan-cta {
+          margin-top:18px; width:100%; background: var(--coral); border:none; color: #1C1428;
+          font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.95rem; padding:14px; border-radius:10px; cursor:pointer;
+        }
+        .plan-cta:hover { filter: brightness(1.08); }
+
+        .plan-closing {
+          margin-top:18px; text-align:center; font-family:'Fraunces',serif; font-size:1.2rem; font-weight:600;
+          color: var(--gold); font-style:italic;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ---------- App ---------- */
 
 export default function App() {
   const [events, setEvents] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [view, setView] = useState("budget");
   const [month, setMonth] = useState("Settembre");
   const [activeEventId, setActiveEventId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -993,6 +1122,13 @@ export default function App() {
         }
         * { box-sizing: border-box; }
         .app { min-height:100vh; background: var(--bg); background-image: radial-gradient(circle at 15% 0%, rgba(232,184,75,0.06), transparent 40%), radial-gradient(circle at 85% 20%, rgba(255,111,89,0.05), transparent 45%); padding: 28px 16px 60px; }
+        .view-tabs { max-width:880px; margin: 0 auto 24px; display:flex; gap:8px; background: var(--surface); border-radius:12px; padding:5px; }
+        .view-tab {
+          flex:1; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.88rem; letter-spacing:0.02em;
+          padding: 11px 14px; border-radius:9px; background: transparent; color: var(--text-muted);
+          border: none; cursor:pointer;
+        }
+        .view-tab.active { background: linear-gradient(135deg, rgba(232,184,75,0.22), rgba(255,111,89,0.16)); color: var(--text); }
         .header { max-width: 880px; margin: 0 auto 24px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
         .h-brand { display:flex; align-items:center; gap:14px; }
         .h-logo { width:44px; height:44px; object-fit:contain; flex-shrink:0; }
@@ -1041,6 +1177,15 @@ export default function App() {
         />
       ) : (
         <>
+          <div className="view-tabs">
+            <button className={"view-tab" + (view === "plan" ? " active" : "")} onClick={() => setView("plan")}>Il Piano</button>
+            <button className={"view-tab" + (view === "budget" ? " active" : "")} onClick={() => setView("budget")}>Budget 2026</button>
+          </div>
+
+          {view === "plan" ? (
+            <PlanView onGoToBudget={() => setView("budget")} />
+          ) : (
+          <>
           <div className="header">
             <div className="h-brand">
               <img src={logoFiver} className="h-logo" alt="" />
@@ -1097,6 +1242,8 @@ export default function App() {
               </button>
             </div>
           </div>
+          </>
+          )}
         </>
       )}
 
