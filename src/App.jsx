@@ -112,7 +112,11 @@ const PLAN_SECTIONS = [
       { icon: "◈", title: "Un piano 2027 su 12 mesi", text: "Costruito sui dati veri raccolti nel 2026, non su stime o sensazioni." },
       { icon: "✓", title: "Da qui si diventa un'azienda", text: "Permessi, società, uno stipendio vero, le regole in ordine — comportarsi da azienda, non più da due persone che organizzano feste." },
     ],
-    closing: "Con un piano nasce un'azienda.",
+    closingSteps: [
+      { emoji: "💡", label: "Idea" },
+      { emoji: "📋", label: "Progetto" },
+      { emoji: "📈", label: "Azienda che crea valore" },
+    ],
   },
 ];
 
@@ -923,7 +927,7 @@ function PlanView({ onGoToBudget }) {
   return (
     <div className="plan-view">
       <div className="plan-hero">
-        <div className="plan-hero-kicker">FIVER</div>
+        <img src={logoFiver} className="plan-hero-logo" alt="Fiver" />
         <div className="plan-hero-title">Il piano di crescita di Fiver</div>
       </div>
 
@@ -944,14 +948,26 @@ function PlanView({ onGoToBudget }) {
           {section.cta && (
             <button className="plan-cta" onClick={onGoToBudget}>Vai al Budget →</button>
           )}
-          {section.closing && <div className="plan-closing">{section.closing}</div>}
+          {section.closingSteps && (
+            <div className="plan-closing-steps">
+              {section.closingSteps.map((step, ci) => (
+                <React.Fragment key={ci}>
+                  {ci > 0 && <span className="plan-closing-arrow">→</span>}
+                  <div className="plan-closing-step">
+                    <span className="plan-closing-emoji">{step.emoji}</span>
+                    <span className="plan-closing-label">{step.label}</span>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
         </div>
       ))}
 
       <style>{`
         .plan-view { max-width:880px; margin:0 auto; padding-bottom:20px; }
         .plan-hero { text-align:center; padding: 20px 0 36px; }
-        .plan-hero-kicker { font-family:'Space Grotesk',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.25em; color: var(--gold); margin-bottom:10px; }
+        .plan-hero-logo { width:72px; height:72px; object-fit:contain; margin-bottom:14px; }
         .plan-hero-title { font-family:'Fraunces',serif; font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight:700; color: var(--text); letter-spacing:-0.01em; line-height:1.15; }
 
         .plan-section { background: var(--surface); border-radius:16px; padding:20px; margin-bottom:16px; }
@@ -980,6 +996,12 @@ function PlanView({ onGoToBudget }) {
           margin-top:18px; text-align:center; font-family:'Fraunces',serif; font-size:1.2rem; font-weight:600;
           color: var(--gold); font-style:italic;
         }
+
+        .plan-closing-steps { margin-top:20px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px 14px; }
+        .plan-closing-step { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:96px; }
+        .plan-closing-emoji { font-size:2rem; line-height:1; }
+        .plan-closing-label { font-family:'Space Grotesk',sans-serif; font-size:0.82rem; font-weight:700; color: var(--text); text-align:center; }
+        .plan-closing-arrow { font-size:1.3rem; color: var(--gold); }
       `}</style>
     </div>
   );
