@@ -927,7 +927,6 @@ function PlanView({ onGoToBudget }) {
   return (
     <div className="plan-view">
       <div className="plan-hero">
-        <img src={logoFiver} className="plan-hero-logo" alt="Fiver" />
         <div className="plan-hero-title">Il piano di crescita di Fiver</div>
       </div>
 
@@ -967,7 +966,6 @@ function PlanView({ onGoToBudget }) {
       <style>{`
         .plan-view { max-width:880px; margin:0 auto; padding-bottom:20px; }
         .plan-hero { text-align:center; padding: 20px 0 36px; }
-        .plan-hero-logo { width:72px; height:72px; object-fit:contain; margin-bottom:14px; }
         .plan-hero-title { font-family:'Fraunces',serif; font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight:700; color: var(--text); letter-spacing:-0.01em; line-height:1.15; }
 
         .plan-section { background: var(--surface); border-radius:16px; padding:20px; margin-bottom:16px; }
@@ -1144,20 +1142,28 @@ export default function App() {
         }
         * { box-sizing: border-box; }
         .app { min-height:100vh; background: var(--bg); background-image: radial-gradient(circle at 15% 0%, rgba(232,184,75,0.06), transparent 40%), radial-gradient(circle at 85% 20%, rgba(255,111,89,0.05), transparent 45%); padding: 28px 16px 60px; }
-        .view-tabs { max-width:880px; margin: 0 auto 24px; display:flex; gap:8px; background: var(--surface); border-radius:12px; padding:5px; }
+
+        .app-topbar {
+          position: sticky; top: 0; z-index: 30; margin: -28px -16px 24px; padding: 14px 16px 0;
+          background: var(--bg); border-bottom: 1px solid rgba(245,239,230,0.08);
+        }
+        .app-topbar-inner { max-width:880px; margin: 0 auto; padding-bottom:14px; }
+        .view-tabs { display:flex; gap:8px; align-items:center; background: var(--surface); border-radius:12px; padding:5px; }
         .view-tab {
           flex:1; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.88rem; letter-spacing:0.02em;
           padding: 11px 14px; border-radius:9px; background: transparent; color: var(--text-muted);
           border: none; cursor:pointer;
         }
         .view-tab.active { background: linear-gradient(135deg, rgba(232,184,75,0.22), rgba(255,111,89,0.16)); color: var(--text); }
-        .header { max-width: 880px; margin: 0 auto 24px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-        .h-brand { display:flex; align-items:center; gap:14px; }
-        .h-logo { width:44px; height:44px; object-fit:contain; flex-shrink:0; }
-        .h-title { font-family:'Fraunces',serif; font-size: clamp(1.6rem, 5vw, 2.3rem); font-weight:700; color: var(--text); letter-spacing:-0.01em; }
-        .h-sub { font-family:'Space Grotesk',sans-serif; font-size:0.85rem; color: var(--text-muted); margin-top:4px; }
-        .gear-btn { background: var(--surface); border:1px solid rgba(245,239,230,0.1); color: var(--text-muted); width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:1.1rem; flex-shrink:0; }
-        .gear-btn:hover { color: var(--text); }
+        .gear-btn-inline {
+          flex-shrink:0; background: transparent; border:none; color: var(--text-muted); width:38px; height:38px;
+          border-radius:9px; cursor:pointer; font-size:1.05rem;
+        }
+        .gear-btn-inline:hover { color: var(--text); background: rgba(245,239,230,0.06); }
+        .app-brand { display:flex; flex-direction:column; align-items:center; gap:6px; padding-top:16px; }
+        .app-brand-logo { width:40px; height:40px; object-fit:contain; }
+        .app-brand-label { font-family:'Space Grotesk',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color: var(--text-muted); }
+        .budget-subtitle { max-width:880px; margin: 0 auto 20px; font-family:'Space Grotesk',sans-serif; font-size:0.85rem; color: var(--text-muted); text-align:center; }
         .kpi-strip { max-width:880px; margin: 0 auto 28px; background: var(--surface); border-radius:16px; padding:20px; display:flex; gap:28px; flex-wrap:wrap; }
         .rc-chart { max-width:880px; margin: 0 auto 28px; background: var(--surface); border-radius:16px; padding:20px; }
         .rc-chart-title { font-family:'Space Grotesk',sans-serif; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-muted); margin-bottom:14px; }
@@ -1199,25 +1205,27 @@ export default function App() {
         />
       ) : (
         <>
-          <div className="view-tabs">
-            <button className={"view-tab" + (view === "plan" ? " active" : "")} onClick={() => setView("plan")}>Il Piano</button>
-            <button className={"view-tab" + (view === "budget" ? " active" : "")} onClick={() => setView("budget")}>Budget 2026</button>
+          <div className="app-topbar">
+            <div className="app-topbar-inner">
+              <div className="view-tabs">
+                <button className={"view-tab" + (view === "plan" ? " active" : "")} onClick={() => setView("plan")}>Il Piano</button>
+                <button className={"view-tab" + (view === "budget" ? " active" : "")} onClick={() => setView("budget")}>Budget 2026</button>
+                {view === "budget" && (
+                  <button className="gear-btn-inline" onClick={() => setShowSettings(true)} aria-label="Modifica target">⚙</button>
+                )}
+              </div>
+              <div className="app-brand">
+                <img src={logoFiver} className="app-brand-logo" alt="Fiver" />
+                <div className="app-brand-label">{view === "plan" ? "Fiver Plan" : "Fiver Budget"}</div>
+              </div>
+            </div>
           </div>
 
           {view === "plan" ? (
             <PlanView onGoToBudget={() => setView("budget")} />
           ) : (
           <>
-          <div className="header">
-            <div className="h-brand">
-              <img src={logoFiver} className="h-logo" alt="" />
-              <div>
-                <div className="h-title">Fiver Plan</div>
-                <div className="h-sub">Settembre – Dicembre 2026 · previsto vs effettivo</div>
-              </div>
-            </div>
-            <button className="gear-btn" onClick={() => setShowSettings(true)} aria-label="Modifica target">⚙</button>
-          </div>
+          <div className="budget-subtitle">Settembre – Dicembre 2026 · previsto vs effettivo</div>
 
           <div className="kpi-strip">
             <ProgressStrip label="Movimentato" budgetTotal={totals.budgetMov} actualTotal={totals.actualMov} target={settings.targetMovimentato} colorBudget="var(--gold)" colorActual="var(--coral)" />
