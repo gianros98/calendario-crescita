@@ -32,7 +32,13 @@ import { supabase, STATE_TABLE, STATE_ROW_ID } from "./supabaseClient";
 
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');`;
 
-const MONTHS = ["Settembre", "Ottobre", "Novembre", "Dicembre"];
+const MONTHS = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+
+const YEARS = [2025, 2026, 2027];
+const DEFAULT_YEAR = 2026;
 
 const EVENT_TYPES = {
   aperitivo: { label: "Aperitivo", icon: "◐" },
@@ -122,9 +128,9 @@ const PLAN_SECTIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-function newEvent(month, costLabels) {
+function newEvent(month, year, costLabels) {
   return {
-    id: uid(), month, name: "Nuovo evento", type: "altro",
+    id: uid(), month, year: year || DEFAULT_YEAR, name: "Nuovo evento", type: "altro",
     revenues: { ticket: { budget: 0, actual: null }, bar: { budget: 0, actual: null } },
     costs: (Array.isArray(costLabels) ? costLabels : DEFAULT_COST_LABELS).map((label) => ({ id: uid(), label, budget: 0, actual: null })),
     marginMode: "percent", // "percent" | "fixedLocale" | "flatFee"
@@ -207,6 +213,7 @@ function migrateEvent(ev) {
   if (ev.revenues && ev.costs) {
     return {
       ...ev,
+      year: ev.year ?? DEFAULT_YEAR,
       revenues: {
         ticket: { budget: ev.revenues.ticket?.budget ?? 0, actual: ev.revenues.ticket?.actual ?? null },
         bar: { budget: ev.revenues.bar?.budget ?? 0, actual: ev.revenues.bar?.actual ?? null },
@@ -234,6 +241,7 @@ function migrateEvent(ev) {
   return {
     id: ev.id || uid(),
     month: ev.month,
+    year: ev.year ?? DEFAULT_YEAR,
     name: ev.name || "Evento",
     type: ev.type || "altro",
     revenues: {
@@ -848,7 +856,7 @@ function SettingsPanel({ settings, events, onChange, onImportData, onClose }) {
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="settings-title">Target 4 mesi</div>
+        <div className="settings-title">Target annuale</div>
         {[
           { key: "targetMovimentato", label: "Movimentato" },
           { key: "targetMargine", label: "Provvigioni (margine)" },
@@ -1011,6 +1019,7 @@ export default function App() {
   const [events, setEvents] = useState(null);
   const [settings, setSettings] = useState(null);
   const [view, setView] = useState("budget");
+  const [year, setYear] = useState(DEFAULT_YEAR);
   const [month, setMonth] = useState("Settembre");
   const [activeEventId, setActiveEventId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -1062,14 +1071,14 @@ export default function App() {
   }, []);
 
   const addEvent = useCallback((m) => {
-    const ne = newEvent(m, settings?.defaultCostLabels);
+    const ne = newEvent(m, year, settings?.defaultCostLabels);
     setEvents((prev) => {
       const next = [...prev, ne];
       saveEvents(next);
       return next;
     });
     setActiveEventId(ne.id);
-  }, [settings]);
+  }, [settings, year]);
 
   const updateSettings = useCallback((s) => { setSettings(s); saveSettings(s); }, []);
 
@@ -1082,10 +1091,12 @@ export default function App() {
     setActiveEventId(null);
   }, []);
 
+  const yearEvents = useMemo(() => (events || []).filter((e) => e.year === year), [events, year]);
+
   const totals = useMemo(() => {
     if (!events) return null;
     let budgetMov = 0, actualMov = 0, budgetMar = 0, actualMar = 0;
-    events.forEach((ev) => {
+    yearEvents.forEach((ev) => {
       budgetMov += revenueTotal(ev, "budget") || 0;
       const am = revenueTotal(ev, "actual");
       if (am !== null) actualMov += am;
@@ -1093,13 +1104,13 @@ export default function App() {
       const mm = computeMargin(ev, "actual");
       if (mm !== null) actualMar += mm;
     });
-    return { budgetMov, actualMov, budgetMar, actualMar, totalEvents: events.length };
-  }, [events]);
+    return { budgetMov, actualMov, budgetMar, actualMar, totalEvents: yearEvents.length };
+  }, [events, yearEvents]);
 
   const rcAggregate = useMemo(() => {
     if (!events) return [];
     let ticket = 0, bar = 0;
-    events.forEach((ev) => {
+    yearEvents.forEach((ev) => {
       ticket += ev.revenues.ticket.actual ?? ev.revenues.ticket.budget ?? 0;
       bar += ev.revenues.bar.actual ?? ev.revenues.bar.budget ?? 0;
     });
@@ -1108,7 +1119,7 @@ export default function App() {
       const value = rl.key === "ticket" ? ticket : bar;
       return { ...rl, value, pct: Math.round((value / total) * 100) };
     });
-  }, [events]);
+  }, [events, yearEvents]);
 
   if (loadError) {
     return (
@@ -1129,7 +1140,7 @@ export default function App() {
   }
 
   const activeEvent = activeEventId ? events.find((e) => e.id === activeEventId) : null;
-  const monthEvents = events.filter((e) => e.month === month);
+  const monthEvents = yearEvents.filter((e) => e.month === month);
 
   return (
     <div className="app">
@@ -1173,6 +1184,13 @@ export default function App() {
         .rc-chip { display:flex; align-items:center; gap:6px; font-family:'Space Grotesk',sans-serif; font-size:0.78rem; color: var(--text-muted); }
         .rc-chip-dot { width:8px; height:8px; border-radius:50%; }
         .rc-chip b { color: var(--text); }
+        .year-tabs { max-width:880px; margin: 0 auto 12px; display:flex; gap:8px; justify-content:center; }
+        .year-tab {
+          font-family:'Fraunces',serif; font-weight:600; font-size:1rem;
+          padding: 8px 22px; border-radius:10px; background:transparent; color: var(--text-muted);
+          border: 1px solid rgba(245,239,230,0.14); cursor:pointer;
+        }
+        .year-tab.active { background: var(--gold); color: #1C1428; border-color: var(--gold); }
         .month-tabs { max-width:880px; margin: 0 auto 20px; display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
         .month-tab {
           font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.85rem; letter-spacing:0.03em;
@@ -1225,7 +1243,7 @@ export default function App() {
             <PlanView onGoToBudget={() => setView("budget")} />
           ) : (
           <>
-          <div className="budget-subtitle">Settembre – Dicembre 2026 · previsto vs effettivo</div>
+          <div className="budget-subtitle">{year} · previsto vs effettivo</div>
 
           <div className="kpi-strip">
             <ProgressStrip label="Movimentato" budgetTotal={totals.budgetMov} actualTotal={totals.actualMov} target={settings.targetMovimentato} colorBudget="var(--gold)" colorActual="var(--coral)" />
@@ -1233,7 +1251,7 @@ export default function App() {
           </div>
 
           <div className="rc-chart">
-            <div className="rc-chart-title">Composizione ricavi (tutti gli eventi)</div>
+            <div className="rc-chart-title">Composizione ricavi ({year})</div>
             <div className="rc-bar">
               {rcAggregate.map((rc) => (
                 <div key={rc.key} className="rc-seg" style={{ width: rc.pct + "%", background: rc.color }} />
@@ -1249,9 +1267,15 @@ export default function App() {
             </div>
           </div>
 
+          <div className="year-tabs">
+            {YEARS.map((y) => (
+              <button key={y} className={"year-tab" + (y === year ? " active" : "")} onClick={() => setYear(y)}>{y}</button>
+            ))}
+          </div>
+
           <div className="month-tabs">
             {MONTHS.map((m) => {
-              const count = events.filter((e) => e.month === m).length;
+              const count = yearEvents.filter((e) => e.month === m).length;
               return (
                 <button key={m} className={"month-tab" + (m === month ? " active" : "")} onClick={() => setMonth(m)}>
                   {m}<span className="month-count">{count}</span>
@@ -1261,7 +1285,7 @@ export default function App() {
           </div>
 
           <div className="grid-wrap">
-            {monthEvents.length === 0 && <div className="empty-month">Nessun evento pianificato per {month} — aggiungine uno.</div>}
+            {monthEvents.length === 0 && <div className="empty-month">Nessun evento pianificato per {month} {year} — aggiungine uno.</div>}
             <div className="event-grid">
               {monthEvents.map((ev) => (
                 <EventTile key={ev.id} ev={ev} onOpen={() => setActiveEventId(ev.id)} />
