@@ -132,6 +132,7 @@ function newEvent(month, year, costLabels) {
   return {
     id: uid(), month, year: year || DEFAULT_YEAR, name: "Nuovo evento", type: "altro",
     revenues: { ticket: { budget: 0, actual: null }, bar: { budget: 0, actual: null } },
+    customRevenues: [],
     costs: (Array.isArray(costLabels) ? costLabels : DEFAULT_COST_LABELS).map((label) => ({ id: uid(), label, budget: 0, actual: null })),
     marginMode: "percent", // "percent" | "fixedLocale" | "flatFee"
     percLocalePct: 20,
@@ -157,11 +158,16 @@ function formatEuro(n) {
 
 /* ---------- calcoli ---------- */
 
+function customRevenuesTotal(ev, field) {
+  return (ev.customRevenues || []).reduce((sum, c) => sum + (c[field] || 0), 0);
+}
+
 function revenueTotal(ev, field) {
   const t = ev.revenues.ticket[field];
   const b = ev.revenues.bar[field];
-  if (field === "actual" && (t === null || t === undefined) && (b === null || b === undefined)) return null;
-  return (t || 0) + (b || 0);
+  const customList = ev.customRevenues || [];
+  if (field === "actual" && (t === null || t === undefined) && (b === null || b === undefined) && customList.every((c) => c.actual === null || c.actual === undefined)) return null;
+  return (t || 0) + (b || 0) + customRevenuesTotal(ev, field);
 }
 
 function costsTotal(ev, field) {
@@ -218,6 +224,7 @@ function migrateEvent(ev) {
         ticket: { budget: ev.revenues.ticket?.budget ?? 0, actual: ev.revenues.ticket?.actual ?? null },
         bar: { budget: ev.revenues.bar?.budget ?? 0, actual: ev.revenues.bar?.actual ?? null },
       },
+      customRevenues: Array.isArray(ev.customRevenues) ? ev.customRevenues : [],
       costs: Array.isArray(ev.costs) ? ev.costs : [],
       marginMode: ev.marginMode || "percent",
       percLocalePct: ev.percLocalePct ?? 20,
@@ -248,6 +255,7 @@ function migrateEvent(ev) {
       ticket: { budget: Math.round(bm * (rc.ticket ?? 50) / 100), actual: am != null ? Math.round(am * (rc.ticket ?? 50) / 100) : null },
       bar: { budget: Math.round(bm * (rc.bar ?? 50) / 100), actual: am != null ? Math.round(am * (rc.bar ?? 50) / 100) : null },
     },
+    customRevenues: [],
     costs,
     marginMode: (ev.fixedMargin !== null && ev.fixedMargin !== undefined) ? "flatFee" : "percent",
     percLocalePct: ev.percLocalePct ?? 20,
@@ -532,6 +540,10 @@ function EventTile({ ev, onOpen }) {
 function EventDetail({ ev, onChange, onDelete, onBack }) {
   const patch = (fields) => onChange({ ...ev, ...fields });
   const patchRevenue = (key, field, val) => onChange({ ...ev, revenues: { ...ev.revenues, [key]: { ...ev.revenues[key], [field]: val } } });
+  const patchCustomRevenueValue = (id, field, val) => onChange({ ...ev, customRevenues: (ev.customRevenues || []).map((c) => (c.id === id ? { ...c, [field]: val } : c)) });
+  const patchCustomRevenueLabel = (id, label) => onChange({ ...ev, customRevenues: (ev.customRevenues || []).map((c) => (c.id === id ? { ...c, label } : c)) });
+  const addCustomRevenue = () => onChange({ ...ev, customRevenues: [...(ev.customRevenues || []), { id: uid(), label: "Nuova voce", budget: 0, actual: null }] });
+  const removeCustomRevenue = (id) => onChange({ ...ev, customRevenues: (ev.customRevenues || []).filter((c) => c.id !== id) });
   const patchCostValue = (id, field, val) => onChange({ ...ev, costs: ev.costs.map((c) => (c.id === id ? { ...c, [field]: val } : c)) });
   const patchCostLabel = (id, label) => onChange({ ...ev, costs: ev.costs.map((c) => (c.id === id ? { ...c, label } : c)) });
   const addCost = () => onChange({ ...ev, costs: [...ev.costs, { id: uid(), label: "Nuova voce", budget: 0, actual: null }] });
@@ -575,18 +587,29 @@ function EventDetail({ ev, onChange, onDelete, onBack }) {
       <div className="table-block">
         <div className="table-title">Ricavi</div>
         <div className="data-table">
-          <div className="dt-row-3 dt-head"><span></span><span className="dt-head-col">Previsto</span><span className="dt-head-col">Effettivo</span></div>
+          <div className="dt-row-4 dt-head"><span></span><span className="dt-head-col">Previsto</span><span className="dt-head-col">Effettivo</span><span></span></div>
           {REVENUE_LINES.map((rl) => (
-            <div className="dt-row-3 dt-row" key={rl.key}>
+            <div className="dt-row-4 dt-row" key={rl.key}>
               <span className="dt-label"><span className="dt-dot" style={{ background: rl.color }} />{rl.label}</span>
               <span className="dt-cell"><NumberField value={ev.revenues[rl.key].budget} onChange={(v) => patchRevenue(rl.key, "budget", v)} prefix="€" /></span>
               <span className="dt-cell"><NumberField value={ev.revenues[rl.key].actual} onChange={(v) => patchRevenue(rl.key, "actual", v)} prefix="€" /></span>
+              <span></span>
             </div>
           ))}
-          <div className="dt-row-3 dt-row dt-total">
+          {(ev.customRevenues || []).map((c) => (
+            <div className="dt-row-4 dt-row dt-row-editable" key={c.id}>
+              <input className="dt-label-input" value={c.label} onChange={(e) => patchCustomRevenueLabel(c.id, e.target.value)} />
+              <span className="dt-cell"><NumberField value={c.budget} onChange={(v) => patchCustomRevenueValue(c.id, "budget", v)} prefix="€" /></span>
+              <span className="dt-cell"><NumberField value={c.actual} onChange={(v) => patchCustomRevenueValue(c.id, "actual", v)} prefix="€" /></span>
+              <button className="dt-remove" onClick={() => removeCustomRevenue(c.id)} aria-label="Rimuovi voce">×</button>
+            </div>
+          ))}
+          <button className="dt-add" onClick={addCustomRevenue}>+ Aggiungi voce di ricavo</button>
+          <div className="dt-row-4 dt-row dt-total">
             <span className="dt-label">Movimentato</span>
             <span className="dt-value">{formatEuro(revBudget)}</span>
             <span className="dt-value">{revActual !== null ? formatEuro(revActual) : "—"}</span>
+            <span></span>
           </div>
         </div>
       </div>
@@ -1109,16 +1132,19 @@ export default function App() {
 
   const rcAggregate = useMemo(() => {
     if (!events) return [];
-    let ticket = 0, bar = 0;
+    let ticket = 0, bar = 0, altro = 0;
     yearEvents.forEach((ev) => {
       ticket += ev.revenues.ticket.actual ?? ev.revenues.ticket.budget ?? 0;
       bar += ev.revenues.bar.actual ?? ev.revenues.bar.budget ?? 0;
+      (ev.customRevenues || []).forEach((c) => { altro += c.actual ?? c.budget ?? 0; });
     });
-    const total = ticket + bar || 1;
-    return REVENUE_LINES.map((rl) => {
+    const total = ticket + bar + altro || 1;
+    const lines = REVENUE_LINES.map((rl) => {
       const value = rl.key === "ticket" ? ticket : bar;
       return { ...rl, value, pct: Math.round((value / total) * 100) };
     });
+    if (altro > 0) lines.push({ key: "altro", label: "Altro", color: "#B8A9C9", value: altro, pct: Math.round((altro / total) * 100) });
+    return lines;
   }, [events, yearEvents]);
 
   if (loadError) {
